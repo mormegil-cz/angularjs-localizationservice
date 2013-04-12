@@ -3,79 +3,88 @@
 /*
  * An AngularJS Localization Service
  *
- * Written by Jim Lavin
- * http://codingsmackdown.tv
- *
- * Modified by Petr Kadlec <mormegil@centrum.cz>
+ * Based on code by Jim Lavin <http://codingsmackdown.tv>, modified by Petr Kadlec <mormegil@centrum.cz>
  */
 
 angular.module('localization', []).
-    factory('localize', ['$http', '$rootScope', '$window', function ($http, $rootScope, $window) {
-        function loadResourceFile(localize, lang, successCallback) {
-            $http({ method: "GET", url: localize.resourceUrl.replace('<>', lang), cache: true }).success(successCallback);
-        }
+    provider('localize', function() {
+        var localizationProvider = {};
+        // URL template for resource files
+        localizationProvider['resourceUrl'] = '/i18n/resources-locale_<>.js';
+        // initial language
+        localizationProvider['language'] = null;
 
-        var localize = {
-            // use the $window service to get the language of the user's browser
-            language: $window.navigator.userLanguage || $window.navigator.language,
-            // array to hold the localized resource string entries, null if not yet loaded
-            dictionary: [],
-            defaultDictionary: [],
-            resourceUrl: '/i18n/resources-locale_<>.js',
+        // factory method
+        localizationProvider['$get'] = ['$http', '$rootScope', '$window', function($http, $rootScope, $window) {
 
-            setLanguage: function (value) {
-                // forget the original dictionary
-                localize.dictionary = [];
-                // change language and reload
-                localize.language = value;
-                localize.loadResources();
-            },
+            function loadResourceFile(localize, lang, successCallback) {
+                $http({ method: "GET", url: localize.resourceUrl.replace('<>', lang), cache: true }).success(successCallback);
+            }
 
-            getLocalizedString: function (value) {
-				// translate using the dictionary
-                var localized = localize.dictionary[value] || localize.defaultDictionary[value] || '';
+            var localize = {
+                resourceUrl: localizationProvider.resourceUrl,
+                // if language not specified explicitly, use the $window service to get the language of the user's browser as the default
+                language: localizationProvider.language || $window.navigator.userLanguage || $window.navigator.language,
+                // array to hold the localized resource string entries
+                dictionary: [],
+                defaultDictionary: [],
 
-				// substitute arguments, if any
-                for (var i = 1; i < arguments.length; ++i)
-                {
-                    localized = localized.replace('$' + i, arguments[i]);
+                setLanguage: function (value) {
+                    // forget the original dictionary
+                    localize.dictionary = [];
+                    // change language and reload
+                    localize.language = value;
+                    localize.loadResources();
+                },
+
+                getLocalizedString: function (value) {
+                    // translate using the dictionary
+                    var localized = localize.dictionary[value] || localize.defaultDictionary[value] || '';
+
+                    // substitute arguments, if any
+                    for (var i = 1; i < arguments.length; ++i)
+                    {
+                        localized = localized.replace('$' + i, arguments[i]);
+                    }
+
+                    return localized;
+                },
+
+                getLocalizedParsedString: function (value) {
+                    var localized = localize.getLocalizedString.apply(localize, arguments);
+
+                    // TODO
+
+                    return localized;
+                },
+
+                loadResources: function () {
+                    // request the resource files
+                    loadResourceFile(localize, localize.language, localize.resourceFileLoaded);
+                },
+
+                resourceFileLoaded: function (data) {
+                    // store the returned array in the dictionary
+                    localize.dictionary = data || [];
+                    // broadcast that the file has been loaded
+                    $rootScope.$broadcast('localizeResourcesUpdates');
                 }
+            };
 
-                return localized;
-            },
+            // load the default translation
+            loadResourceFile(localize, 'default', function (data) {
+                localize.defaultDictionary = data || [];
+            });
 
-            getLocalizedParsedString: function (value) {
-				var localized = localize.getLocalizedString.apply(localize, arguments);
+            // load the translation for the default language
+            localize.loadResources();
 
-				// TODO
+            // return the local instance when called
+            return localize;
+        }];
 
-                return localized;
-            },
-
-            loadResources: function () {
-                // request the resource files
-                loadResourceFile(localize, localize.language, localize.resourceFileLoaded);
-            },
-
-            resourceFileLoaded: function (data) {
-                // store the returned array in the dictionary
-                localize.dictionary = data || [];
-                // broadcast that the file has been loaded
-                $rootScope.$broadcast('localizeResourcesUpdates');
-            },
-        };
-
-        // load the default translation
-        loadResourceFile(localize, 'default', function (data) {
-			localize.defaultDictionary = data || [];
-        });
-
-        // load the translation for the default language
-        localize.loadResources();
-
-        // return the local instance when called
-        return localize;
-    } ]).
+        return localizationProvider;
+    }).
     filter('i18n', ['localize', function (localize) {
         return function() {
             return localize.getLocalizedString.apply(localize, arguments);

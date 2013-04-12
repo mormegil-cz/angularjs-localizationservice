@@ -1,12 +1,16 @@
 describe("i18n spec suite", function() {
 
 	beforeEach(function() {
-		module('localization');
+		module('localization', function(localizeProvider) {
+			localizeProvider.language = 'qqx';
+			localizeProvider.resourceUrl = '/i18n/locale-<>.js';
+		});
 	});
 	beforeEach(inject(function($httpBackend) {
-		$httpBackend.when('GET', '/i18n/resources-locale_qqx.js').respond({msg: 'Foo bar', msgwithparam: 'Foo $1 baz $2', pluralizedmsg: '$1 {{PLURAL:$1|one=foo|few=foos|other=fooos}}'});
-		$httpBackend.when('GET', '/i18n/resources-locale_default.js').respond({});
-		$httpBackend.when('GET', '/i18n/resources-locale_cs-CZ.js').respond({});
+		$httpBackend.whenGET('/i18n/locale-qqx.js').respond({msg: 'Foo bar', msgwithparam: 'Foo $1 baz $2', pluralizedmsg: '$1 {{PLURAL:$1|one=foo|few=foos|other=fooos}}'});
+		$httpBackend.whenGET('/i18n/locale-alternate.js').respond({});
+		$httpBackend.whenGET('/i18n/locale-default.js').respond({});
+		//$httpBackend.whenGET(new RegExp('/i18n/resources-locale_[a-zA-Z-]*.js')).respond({});
 	}));
 
 	afterEach(inject(function($httpBackend) {
@@ -16,9 +20,9 @@ describe("i18n spec suite", function() {
 
 	describe("Resource management specs", function() {
 
-		it('should properly load the respective resource file', inject(function($httpBackend, localize) {
-			$httpBackend.expectGET('/i18n/resources-locale_qqx.js');
-			localize.setLanguage('qqx');
+		it('should properly load another resource file', inject(function($httpBackend, localize) {
+			$httpBackend.expectGET('/i18n/locale-alternate.js');
+			localize.setLanguage('alternate');
 			$httpBackend.flush();
 		}));
 
@@ -27,7 +31,7 @@ describe("i18n spec suite", function() {
 	describe("Translation specs", function() {
 
 		beforeEach(inject(function($httpBackend, localize) {
-			localize.setLanguage('qqx');
+			// ensure resources are loaded prior to running tests
 			$httpBackend.flush();
 		}));
 
