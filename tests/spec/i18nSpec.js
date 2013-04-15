@@ -2,12 +2,16 @@ describe("i18n spec suite", function() {
 
 	beforeEach(function() {
 		module('localization', function(localizeProvider) {
-			localizeProvider.language = 'qqx';
+			localizeProvider.language = 'cs-CZ';
 			localizeProvider.resourceUrl = '/i18n/locale-<>.js';
 		});
 	});
 	beforeEach(inject(function($httpBackend) {
-		$httpBackend.whenGET('/i18n/locale-qqx.js').respond({msg: 'Foo bar', msgwithparam: 'Foo $1 baz $2', pluralizedmsg: '$1 {{PLURAL:$1|one=foo|few=foos|other=fooos}}'});
+		$httpBackend.whenGET('/i18n/locale-cs-CZ.js').respond({
+			msg: 'Foo bar',
+			msgwithparam: 'Foo $1 baz $2',
+			pluralizedmsg: '$1 {{args[1] | plural:{one:"foo",few:"foos",other:"fooos"} }}'
+		});
 		$httpBackend.whenGET('/i18n/locale-alternate.js').respond({});
 		$httpBackend.whenGET('/i18n/locale-default.js').respond({});
 		//$httpBackend.whenGET(new RegExp('/i18n/resources-locale_[a-zA-Z-]*.js')).respond({});
@@ -51,7 +55,6 @@ describe("i18n spec suite", function() {
 			expect($parse('"msgwithparam" | i18n:333:345')()).toEqual('Foo 333 baz 345');
 		}));
 
-		/*
 		it('should properly translate a pluralized message', inject(function(localize) {
 			expect(localize.getLocalizedParsedString('pluralizedmsg', 1)).toEqual('1 foo');
 			expect(localize.getLocalizedParsedString('pluralizedmsg', 3)).toEqual('3 foos');
@@ -63,7 +66,5 @@ describe("i18n spec suite", function() {
 			expect($parse('"pluralizedmsg" | i18nparsed:3')()).toEqual('3 foos');
 			expect($parse('"pluralizedmsg" | i18nparsed:333')()).toEqual('333 fooos');
 		}));
-		*/
-
 	});
 });

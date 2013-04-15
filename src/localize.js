@@ -15,10 +15,10 @@ angular.module('localization', []).
         localizationProvider['language'] = null;
 
         // factory method
-        localizationProvider['$get'] = ['$http', '$rootScope', '$window', function($http, $rootScope, $window) {
+        localizationProvider['$get'] = ['$http', '$rootScope', '$window', '$interpolate', function ($http, $rootScope, $window, $interpolate) {
 
-            function loadResourceFile(localize, lang, successCallback) {
-                $http({ method: "GET", url: localize.resourceUrl.replace('<>', lang), cache: true }).success(successCallback);
+            function loadResourceFile(_localize, lang, successCallback) {
+                $http({ method: "GET", url: _localize.resourceUrl.replace('<>', lang), cache: true }).success(successCallback);
             }
 
             var localize = {
@@ -28,34 +28,48 @@ angular.module('localization', []).
                 // array to hold the localized resource string entries
                 dictionary: [],
                 defaultDictionary: [],
+                // cached parsers for parsed messages (see getLocalizedParsedString)
+                parsers: [],
 
                 setLanguage: function (value) {
                     // forget the original dictionary
                     localize.dictionary = [];
+                    localize.parsers = [];
                     // change language and reload
                     localize.language = value;
                     localize.loadResources();
                 },
 
-                getLocalizedString: function (value) {
+                getLocalizedString: function (messageKey) {
                     // translate using the dictionary
-                    var localized = localize.dictionary[value] || localize.defaultDictionary[value] || '';
+                    var localized = localize.dictionary[messageKey] || localize.defaultDictionary[messageKey] || '';
 
                     // substitute arguments, if any
                     for (var i = 1; i < arguments.length; ++i)
                     {
-                        localized = localized.replace('$' + i, arguments[i]);
+                        localized = localized.replace('$' + i, arguments[i], 'g');
                     }
 
                     return localized;
                 },
 
-                getLocalizedParsedString: function (value) {
+                getLocalizedParsedString: function () {
+                    // get the translated message text
                     var localized = localize.getLocalizedString.apply(localize, arguments);
 
-                    // TODO
+                    // try if we already have a parser for this message cached
+                    var parser = localize.parsers[localized];
+                    if (parser === undefined) {
+                        // otherwise, create parser and store into the cache
+                        parser = $interpolate(localized);
+                        localize.parsers[localized] = parser;
+                    }
 
-                    return localized;
+                    // evaluate the message for the current arguments
+                    var context = {
+                        args: arguments
+                    };
+                    return parser(context);
                 },
 
                 loadResources: function () {
@@ -89,7 +103,20 @@ angular.module('localization', []).
         return function() {
             return localize.getLocalizedString.apply(localize, arguments);
         };
-    }]).directive('i18n', ['localize', function(localize){
+    }]).
+    filter('i18nparsed', ['localize', function (localize) {
+        return function () {
+            return localize.getLocalizedParsedString.apply(localize, arguments);
+        };
+    }]).
+    filter('plural', ['$locale', function ($locale) {
+        return function () {
+            var count = this.args[1];
+            var variants = arguments[1];
+            return variants[$locale.pluralCat(count) || 'other'];
+        };
+    }]).
+    directive('i18n', ['localize', function (localize) {
         var i18nDirective = {
             restrict:"EAC",
             updateText:function(elm, token){
@@ -116,7 +143,7 @@ angular.module('localization', []).
                     i18nDirective.updateText(elm, attrs.i18n);
                 });
 
-                attrs.$observe('i18n', function (value) {
+                attrs.$observe('i18n', function () {
                     i18nDirective.updateText(elm, attrs.i18n);
                 });
             }
