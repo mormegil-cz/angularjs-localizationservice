@@ -8,6 +8,12 @@ The service returns a localized string based on the current locale of the browse
 
 You can inject the service into a controller or use it via the i18n filter or the i18n directive provided in the code.
 
+### Differences to Jim Lavin’s version
+
+1. Simplified format of the translation file.
+2. Support for parameters in messages.
+3. Support for plural handling.
+
 ## Wiring It Up
 
 You need to follow a few steps to wire the service into your app:
@@ -24,7 +30,7 @@ The localization file is pretty simple. It consists of a JSON object mapping mes
 
     {
         "_Greeting_": "iteSa ocalizationla xampleea singua heta esourcera ocalizationla ervicesa",
-		"_HomeTitle_": "esourceRa ocalizationLa erviceSa"
+        "_HomeTitle_": "esourceRa ocalizationLa erviceSa"
     }
 
 The key is used to look up the localized string, and the value will be returned from the lookup.

@@ -14,6 +14,18 @@ angular.module('localization', []).
         // initial language
         localizationProvider['language'] = null;
 
+        // processing of parameter placeholders (e.g. $1)
+        var paramsRegexen = [];
+        for (var i = 1; i < 10; ++i) {
+            paramsRegexen[i] = new RegExp('\\$' + i, 'g');
+        }
+        function substituteParams(text, params) {
+            for (var i = 1; i < params.length; ++i) {
+                text = text.replace(paramsRegexen[i], params[i]);
+            }
+            return text;
+        }
+
         // factory method
         localizationProvider['$get'] = ['$http', '$rootScope', '$window', '$interpolate', function ($http, $rootScope, $window, $interpolate) {
 
@@ -45,17 +57,14 @@ angular.module('localization', []).
                     var localized = localize.dictionary[messageKey] || localize.defaultDictionary[messageKey] || '';
 
                     // substitute arguments, if any
-                    for (var i = 1; i < arguments.length; ++i)
-                    {
-                        localized = localized.replace('$' + i, arguments[i], 'g');
-                    }
+                    localized = substituteParams(localized, arguments);
 
                     return localized;
                 },
 
-                getLocalizedParsedString: function () {
-                    // get the translated message text
-                    var localized = localize.getLocalizedString.apply(localize, arguments);
+                getLocalizedParsedString: function (messageKey /* ... */) {
+                    // get the translated message text from the dictionary
+                    var localized = localize.dictionary[messageKey] || localize.defaultDictionary[messageKey] || '';
 
                     // try if we already have a parser for this message cached
                     var parser = localize.parsers[localized];
@@ -69,7 +78,12 @@ angular.module('localization', []).
                     var context = {
                         args: arguments
                     };
-                    return parser(context);
+                    localized = parser(context);
+
+                    // substitute arguments, if any
+                    localized = substituteParams(localized, arguments);
+
+                    return localized;
                 },
 
                 loadResources: function () {
